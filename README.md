@@ -1,6 +1,6 @@
-# Cypress_Postgres
+# Cypress_Oracle_Mocha
 
-To integrate Cypress with a PostgreSQL database, you'll need to follow a few steps. This involves setting up a test environment, writing tests, and configuring Cypress to interact with your database.
+To integrate Cypress with a Oracle database, you'll need to follow a few steps. This involves setting up a test environment, writing tests, and configuring Cypress to interact with your database.
 
 # Here's a step-by-step guide:
 
@@ -18,56 +18,76 @@ You can create a test database using a tool like pg or using a command-line tool
 
 ## 3. Install Necessary Libraries:
 
-You'll need a library to interact with your PostgreSQL database. One popular choice is pg.
+You'll need a library to interact with your Oracle database.
 
-      npm install pg
+      npm i node-oracledb
 
 ## 4. Write Cypress Tests:
 
 In your Cypress test files, you can now write tests that interact with your database. 
 
-            describe('Cypress with Postgres', () => {
-                it('Database Test', () => {
-                    cy.task("SqlQueryPS", "select * from employee").then((res) => {
-                        console.log(res)
+      describe('Cypress with Oracle Database', () => {
+            it('Database Test', () => {
+                    const query = "select * from customers"; 
+                    cy.task("sqlQuery", query).then((result) => {
+                    let data = Object.values(result.rows)
+                    console.log(data)
                     })
-               })
+                })
             })
 
 ## 5. Configure Cypress to Access the Database:
 
 You'll need to set up a connection to your test database within your Cypress configuration. This typically involves creating a file, such as cypress.config.js, to configure Cypress plugins.
 
-            const { Client } = require('pg')
-            const connectDB = async (querys) => {
+            const { defineConfig } = require("cypress");
+            const oracledb = require("oracledb");
 
-              const client = new Client({
-              user: "postgres",
-              host: "localhost",
-              database: "Emp",
-              password: "postgres",
-              port: "5432"
-              })
+            //oracledb.initOracleClient({ libDir: "cypress/instantclient_21_11" });
 
-           await client.connect()
-           console.log("NOTE===>DB Connection Established");
-           return await client.query(querys);
-         };
+            // Oracle DB credentials 
+            const db_config = {
+              user: "SYSTEM",
+              password: "SYSTEM",
+              connectString: "localhost:1521/XE"
+            }
+
+            const queryData = async (query, db_config) => {
+              let conn;
+              try {
+                // It's failing on this getConnection line
+                conn = await oracledb.getConnection(db_config);
+                console.log("NOTE===>connect established")
+                return await conn.execute(query);
+              } catch (err) {
+                console.log("Error===>" + err)
+                return err
+              } finally {
+                if (conn) {
+                  try {
+                    conn.close();
+                  } catch (err) {
+                    console.log("Error===>" + err)
+                  }
+                }
+              }
+            }
 
 
-        module.exports = defineConfig({
+      module.exports = defineConfig({
         e2e: {
           setupNodeEvents(on, config) {
             // implement node event listeners here
-
+      
             on('task', {
-              SqlQueryPS: (query) => {
-                return connectDB(query);
+              sqlQuery: (query) => {
+                return queryData(query, db_config);
               }
             })
           },
         },
       });
+
 
 ## 6. Run Your Tests:
 
